@@ -27,26 +27,46 @@ def subsample_offsets(n, d=2, jitter=None):
     return x
 
 @jit
-def _sine_star(n,x,y,offsets):
-    img = 0
-    for ox,oy in offsets:
-        a = np.arctan2(y+oy,x+ox)
-        img += np.cos(n*a)
-    img /= len(offsets)
-    return (1+img)/2
+def _sine_star(n,r0,r1,offsets, img, mask):
+    s = 2*int(np.ceil(r1))
+    #iterate over offsets
+    for i in range(offsets.shape[0]):
+        ox,oy = offsets[i]
+        #iterate over pixels
+        for j in range(s):
+            py = j - s/2
+            for k in range(s):
+                px = k - s/2
+                r = np.hypot(px+ox, py+oy)
+                if r <= r1 and r >= r0:
+                    a = np.arctan2(py+oy, px+ox)
+                    img[j,k] += (1+np.cos(n*a))/2
+                    mask[j,k] += 1
+    for i in range(s):
+        for j in range(s):
+            m = mask[i,j]
+            if m != 0:
+                img[i,j] /= m
+            mask[i,j] = m/len(offsets)
 
-def sine_star(n, w, naa):
+def sine_star(n, r0, r1, nss):
     """Make a sine star
-    n: number of cylcles
-    w: width, in pixels
-    naa: anti-aliasing grid size
+    parameters
+      n: number of cycles
+      r0, r1: inner and outer radii, in pixels. May be fractional
+      nss: sub-sampling grid size
+    returns
+        (img, mask)
+            each is 2D ndarray with pattern
+            shape (2*ceil(r1), 2*ceil(r1))
     """
-    dx = 2/w
-    x = np.linspace(-1,1,w,endpoint=False) #pixel corners
-    x,y = np.meshgrid(x,x)
-    offsets = dx*subsample_offsets(naa,jitter=None).reshape((-1,2))
+    offsets = subsample_offsets(nss,jitter=None).reshape((-1,2))
+    s = 2*int(np.ceil(r1))
+    img = np.zeros((s,s))
+    mask = np.zeros_like(img)
     
-    return _sine_star(n,x,y,offsets)
+    _sine_star(n,r0,r1,offsets, img, mask)
+    return img, mask
 
 def to_byte(x):
     #evenly divides the range from 0 to 1 into 256 bins
@@ -57,14 +77,19 @@ def mm_to_inches(x):
     return x/25.4
 
 if __name__ == '__main__':
-    #calculate how big the image should be to match the printer's resolution
-    dpi = 1200
-    #set the width such that the circumference is about 600 mm
-    width = int(np.ceil(dpi*mm_to_inches(600/np.pi)))
-    naa = 10
+    #subsample grid size
+    nss = 10
+    
+    #how many pixels per cycle do we want, minimum?
+    ppc = 20
+    
     cycles = [36, 72, 144]
     for c in cycles:
-        print(f'Generate {c}-cycle sine star at {dpi} dpi (width={width})... ',end='',flush=True)
-        img = sine_star(c, width, naa)
-        Image.fromarray(to_byte(img),'L').save(f'sine-target-{c}-{dpi}.png')
+        r0 = c*ppc/(2*np.pi)
+        r1 = 3*r0
+        print(f'Generate {c}-cycle sine star... ',end='',flush=True)
+        img, mask = sine_star(c, r0, r1, nss)
+        img, mask = to_byte(img), to_byte(mask)
+        #rgba = np.stack((img, img, img, mask),-1)
+        Image.fromarray(img,'L').save(f'radial-sine-{c}.png')
         print('DONE')
