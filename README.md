@@ -1,6 +1,6 @@
 # Resolution Test Patterns
 
-Various resolution targets for photography with PDF, SVG, and source files.
+Various resolution targets for photography with PDF, SVG, and source files. With some tweaking, the image files could also be used for testing image interpolation or compression algorithms.
 
 ## radial-sharp-*
 Siemens star patterns with the given number of spokes and sharp boundaries between lines.
