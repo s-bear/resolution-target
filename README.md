@@ -2,6 +2,8 @@
 
 Various resolution targets for photography with PDF, SVG, and source files. With some tweaking, the image files could also be used for testing image interpolation or compression algorithms.
 
+These are close to a standard ISO 12233 target, but I haven't purchased the standard so it's certainly not compliant!
+
 ## radial-sharp-*
 Siemens star patterns with the given number of spokes and sharp boundaries between lines.
 - These patterns are easier to print than the sinusoidal version.
